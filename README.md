@@ -17,6 +17,16 @@ npm run start:lan
 
 On this computer you can also use http://localhost:5173. Use the same address and browser consistently: the device ownership cookie is specific to the hostname. The local server binds to all interfaces; no cloud deployment has been made.
 
+## Share a public link
+
+To let people outside your Wi-Fi open the app, keep the local server running and, in a second terminal, run:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:5173
+```
+
+It prints a `https://….trycloudflare.com` address. The link works only while this computer is awake and both the server and the tunnel keep running, and the address changes every time the tunnel starts. Anyone with the link can view and book, just like on the Wi-Fi.
+
 ## Test rules
 
 - Opening hours: 08:00–22:00, America/Chihuahua time.

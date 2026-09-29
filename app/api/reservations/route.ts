@@ -7,7 +7,12 @@ const headers = { 'Cache-Control': 'no-store' };
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers }); }
 function ownerOf(req: Request) { return req.headers.get('cookie')?.match(/(?:^|;\s*)oasis_device=([a-f0-9-]{36})(?:;|$)/)?.[1] ?? ''; }
 function validDate(date: unknown): date is string { return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date)) && new Date(date).toISOString().slice(0,10) === date; }
-function sameOrigin(req: Request) { const origin = req.headers.get('origin'); return !origin || origin === new URL(req.url).origin; }
+// Compare hosts rather than full origins: behind an HTTPS tunnel or proxy the page is https:// while this server sees http://.
+function sameOrigin(req: Request) {
+  const origin = req.headers.get('origin');
+  if (!origin) return true;
+  try { return new URL(origin).host === (req.headers.get('host') || new URL(req.url).host); } catch { return false; }
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url), owner = ownerOf(req), mine = url.searchParams.get('mine') === '1';
