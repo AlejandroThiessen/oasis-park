@@ -15,7 +15,7 @@ From this directory:
 npm run start:lan
 ```
 
-On this computer you can also use http://localhost:5173. Use the same address and browser consistently: the device ownership cookie is specific to the hostname. The local server binds to all interfaces; no cloud deployment has been made.
+On this computer you can also use http://localhost:5173. Use the same address and browser consistently: the device ownership cookie is specific to the hostname. The local server binds to all interfaces. A separate copy also runs on Cloudflare; see [Permanent Cloudflare link](#permanent-cloudflare-link).
 
 ## Share a public link
 
@@ -26,6 +26,21 @@ cloudflared tunnel --url http://127.0.0.1:5173
 ```
 
 It prints a `https://….trycloudflare.com` address. The link works only while this computer is awake and both the server and the tunnel keep running, and the address changes every time the tunnel starts. Anyone with the link can view and book, just like on the Wi-Fi.
+
+## Permanent Cloudflare link
+
+**https://oasis-park.alejandrothiessen.workers.dev** (TV page: `/tv`) runs on Cloudflare Workers, so it works from anywhere even with this computer off. It is a separate copy with its own D1 database, `oasis-park`, which started with only the 15 sample bookings: bookings made there do not appear on this computer's server or its TV page, and the other way round. Real bookings and names stayed on this computer.
+
+To publish changes there, after a one-time `npx wrangler login` with the Cloudflare account:
+
+```sh
+npm run build
+npm run deploy:cloudflare
+```
+
+`scripts/deploy-cloudflare.mjs` finds the `oasis-park` database (creating it with the schema on a first deploy) and deploys the build pointed at it. It writes `dist/server/wrangler.cloudflare.json` and never changes `dist/server/wrangler.json`, so the local server keeps its own database. Both run on Cloudflare's free plan.
+
+To run the booking tests against it: `OASIS_TEST_URL=https://oasis-park.alejandrothiessen.workers.dev python3 tests/reservations.py`. They create and remove only their own bookings, 89 days ahead.
 
 ## Park screen (TV)
 

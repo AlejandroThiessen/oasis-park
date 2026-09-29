@@ -15,7 +15,10 @@ BODY = dict(kiosk=6, date=DATE, start=480, end=600, name='Prueba automatizada', 
 cleanup = []
 
 def client():
-    return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    # Cloudflare's edge rejects Python's default user agent (error 1010) on the deployed site.
+    opener.addheaders = [('User-Agent', 'oasis-park-tests')]
+    return opener
 
 def call(c, method='GET', path='/api/reservations', data=None, origin=BASE):
     req = urllib.request.Request(BASE + path, method=method, headers={'Content-Type':'application/json', 'Origin': origin}, data=json.dumps(data).encode() if data is not None else None)
