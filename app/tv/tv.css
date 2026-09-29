@@ -1,0 +1,118 @@
+/* Park screen (/tv): laid out for 1920 × 1080 with 1rem = 16px, scaled to fill any screen and letterboxed on other shapes.
+   Sized for a 75" screen: the drone view takes most of it; the board is compact. */
+html:has(.tv-screen){font-size:min(calc(100vw / 120),calc(100vh / 67.5));background:#0b1712;overflow:hidden}
+html:has(.tv-screen) body{background:#0b1712;overflow:hidden}
+.tv-screen{--tv-free:#17694e;--tv-busy:#c2410c;--tv-free-glow:#7ce8ad;--tv-busy-glow:#ffb07a;position:fixed;inset:0;margin:auto;width:120rem;height:67.5rem;display:grid;grid-template-columns:82.5rem minmax(0,1fr);overflow:hidden;background:#0b1712;color:#fff;font-family:var(--font-sign);cursor:none}
+.tv-screen[data-pointer]{cursor:auto}
+
+/* Drone view */
+.tv-stage{position:relative;overflow:hidden;background:#6f8a4f;isolation:isolate;-webkit-user-select:none;user-select:none}
+.tv-aerial,.tv-drift,.tv-ground,.tv-ground-ui{position:absolute;inset:0}
+.tv-aerial{z-index:1}
+/* A slow push in while the drone view rests; the flight starts from wherever it has reached. */
+.tv-drift{transform-origin:50% 50%}
+.tv-stage[data-mode=aerial] .tv-drift{animation:tv-drift 26s cubic-bezier(.37,0,.63,1) forwards}
+@keyframes tv-drift{to{transform:scale(1.07)}}
+.tv-plane{position:absolute;aspect-ratio:1168/1347}
+.tv-plane>img{display:block;width:100%;height:100%}
+.tv-ground{z-index:2;pointer-events:none}
+.tv-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;visibility:hidden}
+.tv-photo.shown{opacity:1;visibility:visible;animation:tv-zoom 22s cubic-bezier(.33,0,.67,1) forwards}
+@keyframes tv-zoom{to{transform:scale(1.1)}}
+[data-engine=css] .tv-photo{transition:opacity .8s ease,visibility 0s .8s}
+[data-engine=css] .tv-photo.shown{transition:opacity .8s ease,visibility 0s}
+
+.tv-pin{position:absolute;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%)}
+.tv-pin::after{content:'';margin-top:.1rem;border:.4rem solid transparent;border-bottom:0;border-top:.5rem solid var(--sign-ink);filter:drop-shadow(0 .12rem .06rem #0005)}
+.tv-pin .plate{min-width:2.8rem;height:2.35rem;padding:0 .5rem;border-radius:.35rem;font-size:1.4rem;box-shadow:0 0 0 .13rem var(--sign-ink),inset 0 0 0 .2rem var(--plate),inset 0 0 0 .27rem var(--sign-ink),0 .35rem .9rem #0b1f1666}
+.tv-pin.free .plate,.tv-pin.busy .plate{--plate:var(--tv-free);color:#fff;box-shadow:0 0 0 .13rem #fff,inset 0 0 0 .2rem var(--plate),inset 0 0 0 .27rem #ffffffb3,0 .35rem .9rem #0b1f1680}
+.tv-pin.busy .plate{--plate:var(--tv-busy)}
+.tv-pin.free::after,.tv-pin.busy::after{border-top-color:#fff}
+.tv-pin-name{position:absolute;left:calc(100% - .3rem);top:.42rem;padding:.3rem .5rem;border-radius:0 .3rem .3rem 0;background:var(--sign-ink);color:#fff;font:700 .8rem/1 var(--font-sign);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+/* "You are here": the screen hangs where the board did, on the restrooms. */
+.tv-here{position:absolute;display:flex;align-items:center;gap:.45rem;padding:.35rem .65rem .35rem .4rem;border-radius:99rem;background:#fff;color:#172554;font:800 .85rem/1 var(--font-sign);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;box-shadow:0 .3rem 1rem #0b1f1659;transform:translate(-.75rem,-50%)}
+.tv-here i{width:.7rem;height:.7rem;border-radius:50%;background:#2563eb;animation:tv-here 2s ease-out infinite}
+@keyframes tv-here{from{box-shadow:0 0 0 0 #2563eb99}to{box-shadow:0 0 0 .8rem #2563eb00}}
+
+.tv-badge,.tv-legend{position:absolute;z-index:6;left:1.25rem;display:flex;align-items:center;border-radius:.65rem;background:#10231bcc;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font:700 .95rem/1 var(--font-sign);transition:opacity .3s}
+.tv-badge{top:1.25rem;gap:.5rem;padding:.55rem .85rem .55rem .7rem}
+.tv-badge svg{width:1.15rem;height:1.15rem}
+.tv-stage[data-mode=ground] .tv-badge{opacity:0}
+.tv-legend{bottom:1.25rem;gap:1.25rem;padding:.7rem 1rem;font-size:1rem}
+.tv-legend span{display:flex;align-items:center;gap:.5rem}
+.tv-legend i{width:1.3rem;height:1rem;border-radius:.22rem;box-shadow:0 0 0 .1rem #fff}
+.tv-legend .free{background:var(--tv-free)}
+.tv-legend .busy{background:var(--tv-busy)}
+.tv-stage:not([data-mode=aerial]) .tv-legend{opacity:0}
+
+/* Ground view: the space, its status and today's bookings. */
+.tv-ground-ui{z-index:5;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s,visibility 0s .3s}
+.tv-stage[data-mode=ground] .tv-ground-ui{opacity:1;visibility:visible;transition:opacity .5s .1s,visibility 0s}
+.tv-caption{position:absolute;left:0;right:0;bottom:0;padding:7rem 2rem 1.75rem;background:linear-gradient(to top,#0b1a13f0,#0b1a13b8 55%,transparent)}
+.tv-caption h2{display:flex;align-items:center;gap:.9rem;font:800 2.6rem/1.05 var(--font-sign);letter-spacing:-.01em}
+.tv-caption-plate.plate{flex:none;min-width:3.3rem;height:2.8rem;border-radius:.4rem;font-size:1.7rem;box-shadow:0 0 0 .12rem var(--sign-ink),inset 0 0 0 .2rem var(--plate),inset 0 0 0 .27rem var(--sign-ink)}
+.tv-caption>p:not(.tv-status){margin-top:.45rem;font:500 1.2rem/1.35 var(--font-sign);color:#e1ebe5}
+.tv-caption .tv-status{margin-top:.9rem;font-size:1.35rem}
+.tv-caption .tv-status b,.tv-caption .tv-status.free b,.tv-caption .tv-status.busy b{padding:.35rem .7rem;border-radius:.45rem;background:#ffffff2e;color:#fff}
+.tv-caption .tv-status.free b{background:var(--tv-free)}
+.tv-caption .tv-status.busy b{background:var(--tv-busy)}
+.tv-caption .tv-status b::before{background:#fff}
+.tv-caption .tv-status span{color:#fff}
+.tv-caption-day{display:flex;align-items:baseline;gap:.8rem;margin-top:.8rem}
+.tv-caption-day>span{font:800 .85rem/1 var(--font-sign);letter-spacing:.12em;text-transform:uppercase;color:#cfe0d6}
+.tv-caption .tv-slots li{font-size:1.1rem}
+
+/* Status and booking chips, shared by the caption and the board (both on dark backgrounds). */
+.tv-status{display:flex;align-items:baseline;flex-wrap:wrap;gap:.15rem .5rem}
+.tv-status b{display:inline-flex;align-items:center;gap:.4rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
+.tv-status b::before{content:'';width:.55em;height:.55em;border-radius:50%;background:currentColor}
+.tv-status.free b{color:var(--tv-free-glow)}
+.tv-status.busy b{color:var(--tv-busy-glow)}
+.tv-status.booked b,.tv-status.unknown b{color:#ffffffc7}
+.tv-status.unknown b::before{display:none}
+.tv-status span{font-weight:600;color:#ffffffd9}
+.tv-slots{display:flex;flex-wrap:wrap;gap:.4rem;margin:0;padding:0;list-style:none}
+.tv-slots li{display:inline-flex;align-items:baseline;padding:.3rem .5rem;border-radius:.4rem;background:#ffffff24;color:#fff;font:700 .9rem/1.1 var(--font-sign);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tv-slots li.now{background:var(--tv-busy)}
+.tv-slots li.past{background:none;color:#ffffff85;box-shadow:inset 0 0 0 .07rem #ffffff3d}
+.tv-slots li.more{background:none;color:#ffffffb3}
+.tv-slots i{margin-left:.1rem;font-style:normal}
+
+/* The board: the park's "Reserva de palapas", on a blurred copy of the scene on screen. */
+.tv-panel{position:relative;isolation:isolate;display:flex;flex-direction:column;min-width:0;min-height:0;padding:1.9rem 1.75rem 1.5rem;overflow:hidden}
+.tv-ambient{position:absolute;inset:0;z-index:-1;overflow:hidden;background:#0b1712}
+.tv-ambient img{position:absolute;left:-15%;top:-10%;width:130%;height:120%;object-fit:cover;filter:blur(3rem) saturate(1.5);opacity:0;visibility:hidden;transition:opacity 2.2s ease,visibility 0s 2.2s}
+.tv-ambient img.shown{opacity:1;visibility:visible;transition:opacity 2.2s ease,visibility 0s}
+.tv-ambient::after{content:'';position:absolute;inset:0;background:linear-gradient(#04100ba6,#04100b73 40%,#04100b8c)}
+.tv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.tv-brand{display:flex;align-items:center;gap:.35rem;margin-bottom:.55rem;font:800 1rem/1 var(--font-sign);letter-spacing:-.01em}
+.tv-brand span{margin-left:.1rem;font-weight:500;color:#ffffffb3}
+.tv-brand svg{width:1.15rem;height:1.15rem;color:var(--tv-free-glow)}
+.tv-head h1{margin:0;font:800 1.4rem/1.1 var(--font-sign);letter-spacing:.06em;text-transform:uppercase}
+.tv-date,.tv-offline{display:flex;align-items:center;gap:.4rem;margin-top:.4rem;font:600 1rem/1.2 var(--font-sign);color:#ffffffbf}
+.tv-offline{color:#ffb4a8}
+.tv-offline svg{flex:none;width:1.1rem;height:1.1rem}
+.tv-clock{font:800 3rem/.85 var(--font-sign);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tv-closed{margin-top:1rem;padding:.55rem .8rem;border-radius:.6rem;background:#ffffff1f;font:700 .95rem/1.3 var(--font-sign)}
+.tv-list{flex:1;display:flex;flex-direction:column;gap:.45rem;min-height:0;margin:1.35rem 0 0;padding:0;list-style:none}
+.tv-row{flex:1;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:.8rem;min-height:0;padding:.55rem .9rem;border-radius:.75rem;background:#ffffff14;box-shadow:inset 0 0 0 .07rem #ffffff1f;transition:background .5s,box-shadow .5s}
+.tv-row.busy{background:#ea580c38;box-shadow:inset 0 0 0 .07rem #fb923c66}
+.tv-row.shown{box-shadow:inset 0 0 0 .14rem #ffffffe6}
+.tv-row .plate{min-width:2.3rem;height:1.95rem;padding:0 .4rem;border-radius:.3rem;font-size:1.15rem;box-shadow:0 0 0 .1rem var(--sign-ink),inset 0 0 0 .16rem var(--plate),inset 0 0 0 .22rem var(--sign-ink)}
+.tv-row-main{min-width:0}
+.tv-row-top{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem}
+.tv-row h2{font:800 1.1rem/1.15 var(--font-sign);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.tv-row .tv-status{flex:none;font-size:1.1rem}
+.tv-row .tv-status span{font-size:.9rem}
+.tv-row .tv-slots{margin-top:.4rem}
+.tv-foot{display:flex;align-items:center;gap:1rem;margin-top:1.1rem}
+.tv-qr-code{flex:none;width:7.75rem;height:7.75rem;padding:.5rem;border-radius:.55rem;background:#fff;fill:var(--sign-ink)}
+.tv-book{font:600 .85rem/1.35 var(--font-sign);color:#ffffffbf;overflow-wrap:break-word}
+.tv-book b{display:block;margin-bottom:.15rem;font-size:1.05rem;font-weight:800;color:#fff}
+.tv-notes{margin-top:.5rem;font:600 .8rem/1.4 var(--font-sign);color:#ffffffa6}
+.tv-notes+.tv-notes{margin-top:.1rem}
+.tv-notes span{white-space:nowrap}
+
+.tv-fullscreen{position:absolute;z-index:20;right:1rem;bottom:1rem;display:flex;align-items:center;gap:.5rem;padding:.65rem .95rem;border:0;border-radius:.6rem;background:#10231be6;color:#fff;font:700 .95rem/1 var(--font-sign);opacity:0;pointer-events:none;transition:opacity .3s}
+.tv-fullscreen svg{width:1.1rem;height:1.1rem}
+.tv-screen[data-pointer] .tv-fullscreen{opacity:1;pointer-events:auto}

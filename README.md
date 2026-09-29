@@ -1,6 +1,6 @@
 # Oasis Park
 
-Spanish, phone-friendly reservations for local network testing: the six palapas, the cancha multiusos and the campo de fútbol. A drone view of the park that flies to real photos of each space, shared availability, and create/cancel flows.
+Spanish, phone-friendly reservations for local network testing: the six palapas, the cancha multiusos and the campo de fútbol. A drone view of the park that flies to real photos of each space, shared availability, create/cancel flows, and a park screen for a TV by the board.
 
 ## Open on your phone
 
@@ -26,6 +26,18 @@ cloudflared tunnel --url http://127.0.0.1:5173
 ```
 
 It prints a `https://….trycloudflare.com` address. The link works only while this computer is awake and both the server and the tunnel keep running, and the address changes every time the tunnel starts. Anyone with the link can view and book, just like on the Wi-Fi.
+
+## Park screen (TV)
+
+`/tv` is a full-screen page for a TV where the “Reserva de palapas” board hangs. Open **http://192.168.1.34:5173/tv** (or the tunnel address followed by `/tv`) in the TV's browser, or follow “Pantalla del parque” at the bottom of the booking page. Once open it needs no mouse or keyboard.
+
+- **Left, the drone view** (most of the screen): the whole park, with each space's plaque green (libre) or orange (ocupada) right now and “Estás aquí” at the restrooms, where the board hangs. The view drifts slowly, then the drone flies down to each space in plaque order and shows its photo, whether it is free or taken right now, and today's bookings, before climbing back. A full tour takes about two minutes.
+- **Right, the board:** a compact list of every space with its status right now (“Ocupada hasta las 16:00”, “Libre hasta las 17:00”) and today's bookings; the space on screen is outlined. It sits on a heavily blurred copy of the scene on screen, so its colours follow the tour. Before 08:00 it lists the day ahead; after 22:00, tomorrow.
+- **QR code** (bottom of the board): “Reserva desde tu celular” opens the address the TV loaded. On `localhost` it is hidden; add the address phones should use, for example `/tv?link=http://192.168.1.34:5173`.
+- Names and property numbers are never shown, even for bookings made from the TV's browser. Test bookings are marked with an asterisk.
+- It refreshes every 15 seconds and shows “Sin conexión desde las …” once the server has not answered for two minutes. It reloads itself once a night, after 04:00, to pick up updates.
+
+Move the mouse to reveal a “Pantalla completa” button, or press F. For a dedicated screen, Chrome's kiosk mode opens it full screen: `google-chrome --kiosk http://192.168.1.34:5173/tv`. The layout is drawn for 1920 × 1080, with type sized for a 75" screen, and scales to any 16:9 screen; other shapes get dark bars. With reduced motion enabled, views cross-fade instead of flying.
 
 ## Test rules
 
@@ -100,6 +112,8 @@ Pin and flight-target coordinates (pixels of the 1168 × 1347 aerial photo), cap
 The park tab opens on the aerial photo. Choosing a space from the map, the tiles, the board or the arrows flies a fake high-speed drone to its ground photo (peaking near 1000 km/h on the HUD). Choosing another space flies there directly, and “Vista de dron” (or Escape) climbs back. Arrow keys and horizontal swipes move between spaces.
 
 `lib/drone-engine.ts` renders flights in WebGL: the aerial photo is a ground plane that the camera pitches over as it descends, frames are motion-blurred across a short shutter, and the ground photo zooms in to take over. Idle views are ordinary HTML images, so the canvas only runs during a flight. Without WebGL, or with reduced motion enabled, views crossfade instead.
+
+The park screen (`components/tv-stage.tsx`) uses the same engine with flights twice as long and a drone view framed on the park. Its idle views drift (the aerial pushes in, photos zoom slowly), so each flight starts from the exact camera and zoom on screen.
 
 ## Photos
 

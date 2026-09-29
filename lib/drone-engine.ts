@@ -13,13 +13,21 @@ type Frame = { cam: Cam; out: Photo | null; inn: Photo | null; flash: number };
 type Path = { a: Cam; b: Cam; rise: number; fall: number; split: number; table: Float32Array; length: number };
 type Plan = {
   start: number; dest: number | null; from: Photo | null; settle: boolean;
-  path: Path; t0: number; T: number; outDur: number; tIn: number; inDur: number; total: number;
+  path: Path; t0: number; T: number; outDur: number; tIn: number; inDur: number; total: number; pace: number;
   /** Converts the drone's real speed into the HUD reading (each flight peaks near 1000 km/h). */
   speedScale: number;
 };
 export type FlightHud = { kmh: number; altitude: number; waiting: boolean };
 /** `at` is the destination while flying; `from` is the space being left (null from the drone view). */
 export type FlightState = { mode: 'aerial' | 'flight' | 'ground'; at: number | null; from: number | null; photoOk: boolean };
+export type EngineOptions = {
+  /** Camera of the drone view; defaults to HOME, which the booking page's CSS mirrors. */
+  home?: Cam;
+  /** Stretches every flight: 1 is the booking page's quick hop. */
+  pace?: number;
+};
+/** A slowly drifting idle view that a flight should start from: the camera, or the photo's zoom (log scale). */
+export type RestView = { cam?: Cam; ls?: number };
 
 const TAN_H = Math.tan(35 * Math.PI / 180); // 70° horizontal field of view
 const M_PER_PX = 0.12; // ground metres per aerial-photo pixel
@@ -77,16 +85,17 @@ export function camAt(p: Path, s: number): Cam {
   return { x: p.a.x + (p.b.x - p.a.x) * m, y: p.a.y + (p.b.y - p.a.y) * m, lw: lwAt(p, clamp01(s)) };
 }
 
-export function planFlight(from: { cam: Cam; photo: Photo | null }, dest: number | null, start: number): Plan {
-  const target = dest == null ? HOME : approachCam(dest);
+export function planFlight(from: { cam: Cam; photo: Photo | null }, dest: number | null, start: number, home = HOME, pace = 1): Plan {
+  const target = dest == null ? home : approachCam(dest);
   const settle = dest != null && from.photo?.id === dest;
   const path = makePath(from.cam, target);
-  const T = settle ? 0.4 : Math.min(Math.max(0.4 + 0.17 * path.length, 0.7), 1.3);
+  const T = pace * (settle ? 0.4 : Math.min(Math.max(0.4 + 0.17 * path.length, 0.7), 1.3));
   const hasOut = !!from.photo && !settle;
+  const outDur = OUT_DUR * pace;
   const t0 = hasOut ? 0.02 : 0;
-  const tIn = dest == null ? Infinity : settle ? 0 : Math.max(t0 + 0.6 * T, hasOut ? OUT_DUR + 0.05 : 0);
-  const inDur = settle ? 0.4 : IN_DUR;
-  const plan: Plan = { start, dest, from: from.photo, settle, path, t0, T, outDur: OUT_DUR, tIn, inDur, total: Math.max(t0 + T, dest == null ? 0 : tIn + inDur), speedScale: 3.6 };
+  const tIn = dest == null ? Infinity : settle ? 0 : Math.max(t0 + 0.6 * T, hasOut ? outDur + 0.05 : 0);
+  const inDur = pace * (settle ? 0.4 : IN_DUR);
+  const plan: Plan = { start, dest, from: from.photo, settle, path, t0, T, outDur, tIn, inDur, total: Math.max(t0 + T, dest == null ? 0 : tIn + inDur), pace, speedScale: 3.6 };
   if (!settle) {
     let peak = 0;
     for (let i = 1; i <= 90; i++) peak = Math.max(peak, speedAt(plan, plan.total * i / 90));
@@ -123,7 +132,7 @@ export function frameAt(plan: Plan, t: number): Frame {
     if (plan.dest != null && t >= plan.tIn) {
       const k = clamp01((t - plan.tIn) / plan.inDur);
       inn = { id: plan.dest, ls: IN_LS * (1 - outExpo(k)), op: outCubic(clamp01(k / 0.5)) };
-      flash = 0.16 * Math.exp(-(((t - plan.tIn - 0.05) / 0.07) ** 2));
+      flash = 0.16 * Math.exp(-(((t - plan.tIn - 0.05 * plan.pace) / (0.07 * plan.pace)) ** 2));
     }
   }
   return { cam, out, inn, flash };
@@ -222,15 +231,20 @@ export class DroneEngine {
   private photos = new Map<number, { tex: WebGLTexture; w: number; h: number; used: number }>();
   private pending = new Set<number>();
   private plan: Plan | null = null;
-  private rest: { cam: Cam; photo: Photo | null } = { cam: HOME, photo: null };
+  private home: Cam;
+  private pace: number;
+  private rest: { cam: Cam; photo: Photo | null };
   private raf = 0;
   private cssW = 1;
   private cssH = 1;
   private waitingSince = 0;
   private lost = false;
 
-  private constructor(private canvas: HTMLCanvasElement, gl: GL, private getImage: (id: number) => HTMLImageElement | null, aerial: HTMLImageElement) {
+  private constructor(private canvas: HTMLCanvasElement, gl: GL, private getImage: (id: number) => HTMLImageElement | null, aerial: HTMLImageElement, options: EngineOptions) {
     this.gl = gl;
+    this.home = options.home ?? HOME;
+    this.pace = options.pace ?? 1;
+    this.rest = { cam: this.home, photo: null };
     const sh = (type: number, src: string) => {
       const s = gl.createShader(type)!;
       gl.shaderSource(s, src);
@@ -262,11 +276,11 @@ export class DroneEngine {
   }
 
   /** Returns null when WebGL (or the shader) is unavailable; callers fall back to CSS transitions. */
-  static create(canvas: HTMLCanvasElement, aerial: HTMLImageElement, getImage: (id: number) => HTMLImageElement | null) {
+  static create(canvas: HTMLCanvasElement, aerial: HTMLImageElement, getImage: (id: number) => HTMLImageElement | null, options: EngineOptions = {}) {
     try {
       const opts: WebGLContextAttributes = { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, powerPreference: 'high-performance' };
       const gl = (canvas.getContext('webgl2', opts) || canvas.getContext('webgl', opts)) as GL | null;
-      return gl ? new DroneEngine(canvas, gl, getImage, aerial) : null;
+      return gl ? new DroneEngine(canvas, gl, getImage, aerial, options) : null;
     } catch (e) {
       console.warn('Drone flight unavailable, using simple transitions.', e);
       return null;
@@ -289,9 +303,10 @@ export class DroneEngine {
     else this.canvas.style.opacity = '0';
   }
 
-  /** Where the stage is resting when no flight is running. */
-  setRest(dest: number | null) {
-    this.rest = dest == null ? { cam: HOME, photo: null } : { cam: approachCam(dest), photo: { id: dest, ls: 0, op: 1 } };
+  /** Where the stage is resting when no flight is running; `view` matches an idle view that drifts. */
+  setRest(dest: number | null, view: RestView = {}) {
+    const cam = view.cam ?? (dest == null ? this.home : approachCam(dest));
+    this.rest = { cam, photo: dest == null ? null : { id: dest, ls: view.ls ?? 0, op: 1 } };
   }
 
   /** Photo textures are uploaded before a flight so the upload never lands mid-motion. */
@@ -326,7 +341,7 @@ export class DroneEngine {
     } else if (dest === (this.rest.photo?.id ?? null)) return false;
     if (dest != null) this.prepare(dest);
     if (from.photo) this.prepare(from.photo.id);
-    this.plan = planFlight(from, dest, now);
+    this.plan = planFlight(from, dest, now, this.home, this.pace);
     this.waitingSince = 0;
     this.render(0);
     this.canvas.style.transition = 'none';
@@ -386,7 +401,7 @@ export class DroneEngine {
   private finish(plan: Plan, photoOk: boolean) {
     this.plan = null;
     this.setRest(plan.dest);
-    this.onFrame?.({ kmh: 0, altitude: plan.dest == null ? dronePos({ cam: HOME, out: null, inn: null, flash: 0 })[2] : EYE_LEVEL, waiting: false });
+    this.onFrame?.({ kmh: 0, altitude: plan.dest == null ? dronePos({ cam: this.home, out: null, inn: null, flash: 0 })[2] : EYE_LEVEL, waiting: false });
     this.onState?.({ mode: plan.dest == null ? 'aerial' : 'ground', at: plan.dest, from: null, photoOk });
   }
 

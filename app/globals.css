@@ -170,6 +170,7 @@ h1{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:42px;le
 .site-footer{display:flex;justify-content:space-between;gap:15px;border-top:1px solid #e2e8e0;margin:8px 5% 0;padding:23px 0;font-size:10px;color:#8a9788}
 .site-footer>span:first-child{letter-spacing:1.3px;font-weight:600}
 .site-footer>span:first-child span{font-weight:400;letter-spacing:0;margin-left:5px}
+.footer-link{text-decoration:underline;text-underline-offset:2px}
 .error-message{padding:12px;background:#fff1ed;color:#a14031;border:1px solid #f1d7d0;border-radius:8px;font-size:13px;margin-top:12px;line-height:1.5}
 .error-message button{display:block;font-weight:600;text-decoration:underline;margin-top:8px}
 .my-bookings{min-height:550px;padding:30px;background:#fff;border:1px solid #dfe7e1;border-radius:15px;margin-bottom:30px}
